@@ -2,15 +2,26 @@ module Abilities = struct
   type t =
     { breakthrough : bool
     ; charge : bool
+    ; drain : bool
     ; guard : bool
+    ; lethal : bool
+    ; ward : bool
     }
+end
+
+module Card_type = struct
+  type t =
+    | Creature
+    | Item_blue
+    | Item_green
+    | Item_red
 end
 
 module Card = struct
   type t =
     { number : int
     ; id : int
-    ; type_ : int
+    ; type_ : Card_type.t
     ; cost : int
     ; attack : int
     ; defense : int
@@ -212,13 +223,24 @@ module Raw = struct
     let parse_abilities raw_abilities =
       { Abilities.breakthrough = String.contains raw_abilities 'B'
       ; charge = String.contains raw_abilities 'C'
+      ; drain = String.contains raw_abilities 'D'
       ; guard = String.contains raw_abilities 'G'
+      ; lethal = String.contains raw_abilities 'L'
+      ; ward = String.contains raw_abilities 'W'
       }
+
+    let parse_card_type raw_type =
+      match raw_type with
+      | 0 -> Card_type.Creature
+      | 1 -> Card_type.Item_green
+      | 2 -> Card_type.Item_red
+      | 3 -> Card_type.Item_blue
+      | _ -> failwith (Printf.sprintf "Unknown card type: %d" raw_type)
 
     let parse_card raw_card =
       { Card.number = raw_card.number
       ; id = raw_card.id
-      ; type_ = raw_card.type_
+      ; type_ = parse_card_type raw_card.type_
       ; cost = raw_card.cost
       ; attack = raw_card.attack
       ; defense = raw_card.defense
