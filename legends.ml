@@ -87,36 +87,45 @@ module Action = struct
     | Pass
 end
 
-module Attack_simulator = struct
+module Simulator = struct
   type state =
-    { self_board : Board_card.t list
-    ; opponent_board : Card.t list
+    { self : Self.t
+    ; opponent : Opponent.t
     }
 
   let next ~action state =
     match action with
     | Action.Attack {attacker_id; target_id} ->
       let (attackers, others_can_attack) =
-        state.self_board
+        state.self.Self.board
         |> List.partition (fun card -> card.Board_card.card.Card.id == attacker_id)
       in
       let attacker = List.hd attackers in
       if target_id == -1 then
-        {state with self_board = {attacker with can_attack = false} :: others_can_attack}
+        { state with
+          self = { state.self with
+                   board = {attacker with can_attack = false} :: others_can_attack
+                 }
+        }
       else
         let (targets, other_opponent_cards) =
-          state.opponent_board
+          state.opponent.Opponent.board
           |> List.partition (fun card -> card.Card.id == target_id)
         in
         let target = List.hd targets in
         let target_defense = target.Card.defense - attacker.Board_card.card.Card.attack in
-        { self_board =
-            {attacker with can_attack = false} :: others_can_attack
-        ; opponent_board =
-            if target_defense > 0 then
-              {target with defense = target_defense} :: other_opponent_cards
-            else
-              other_opponent_cards
+        { self =
+            { state.self with board = {attacker with can_attack = false} :: others_can_attack
+            }
+        ; opponent =
+            { state.opponent with
+              board =
+                if target_defense > 0 then
+                  {target with defense = target_defense} :: other_opponent_cards
+                else
+                  other_opponent_cards
+            }
+
         }
     | Action.Pick {position = _}
     | Action.Summon {id = _}
@@ -130,7 +139,7 @@ module Strategy = struct
 
   let attack_action state =
     let can_attack =
-      state.Attack_simulator.self_board
+      state.Simulator.self.Self.board
       |> List.filter (fun card -> card.Board_card.can_attack)
       |> List.map (fun card -> card.Board_card.card)
     in
@@ -139,7 +148,7 @@ module Strategy = struct
       None
     | attacker :: _ ->
       ( let guards =
-          state.Attack_simulator.opponent_board
+          state.Simulator.opponent.Opponent.board
           |> List.filter (fun card -> card.Card.abilities.Abilities.guard)
         in
         match guards with
@@ -165,13 +174,13 @@ module Strategy = struct
           | None ->
             actions
           | Some action ->
-            let new_state = Attack_simulator.next ~action state in
+            let new_state = Simulator.next ~action state in
             attack ~state:new_state ~actions:(actions @ [action])
         in
         attack
           ~state:
-            { Attack_simulator.self_board = self.Self.board
-            ; opponent_board = opponent.Opponent.board
+            { Simulator.self
+            ; opponent
             }
           ~actions:[]
       in

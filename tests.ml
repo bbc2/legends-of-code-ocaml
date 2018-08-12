@@ -55,24 +55,85 @@ module Fixtures = struct
       ; can_attack
       }
   end
+
+  module Self = struct
+    let factory
+        ?(health=30)
+        ?(mana=0)
+        ?(deck=0)
+        ?(rune=25)
+        ?(board=[])
+        ?(hand=[])
+        ()
+      =
+      { Legends.Self.health
+      ; mana
+      ; deck
+      ; rune
+      ; board
+      ; hand
+      }
+  end
+
+  module Opponent = struct
+    let factory
+        ?(health=30)
+        ?(mana=0)
+        ?(deck=0)
+        ?(rune=25)
+        ?(board=[])
+        ?(hand_length=0)
+        ()
+      =
+      { Legends.Opponent.health
+      ; mana
+      ; deck
+      ; rune
+      ; board
+      ; hand_length
+      }
+  end
+
+  module Simulator = struct
+    let factory
+      ?(self=Self.factory ())
+      ?(opponent=Opponent.factory ())
+      ()
+      =
+      { Legends.Simulator.self
+      ; opponent
+      }
+  end
 end
 
-module Attack_simulator = struct
+module Simulator = struct
   let test_next_no_guard () =
     let state =
-      { Legends.Attack_simulator.self_board =
-          [ Fixtures.Board_card.factory
-              ~card:(Fixtures.Card.factory ~id:10 ())
-              ~can_attack:true
+      Fixtures.Simulator.factory
+        ~self:
+          ( Fixtures.Self.factory
+              ~board:
+                [ Fixtures.Board_card.factory
+                    ~card:(Fixtures.Card.factory ~id:10 ())
+                    ~can_attack:true
+                    ()
+                ]
               ()
-          ]
-      ; opponent_board =
-          [ Fixtures.Card.factory ~id:20 ~abilities:(Fixtures.Abilities.factory ~guard:false ()) ()
-          ]
-      }
+          )
+        ~opponent:
+          ( Fixtures.Opponent.factory
+              ~board:
+                [ Fixtures.Card.factory
+                    ~id:20
+                    ~abilities:(Fixtures.Abilities.factory ~guard:false ())
+                    ()
+                ]
+              ()
+          )
+        ()
     in
 
-    let _result = Legends.Attack_simulator.next state in
+    let _result = Legends.Simulator.next state in
 
     ()
 
@@ -84,5 +145,5 @@ end
 let () =
   Alcotest.run
     "Legends"
-    [ ("Attack_simulator", Attack_simulator.test)
+    [ ("Simulator", Simulator.test)
     ]
