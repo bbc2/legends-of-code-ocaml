@@ -127,8 +127,23 @@ module Simulator = struct
             }
 
         }
+    | Action.Summon {id} ->
+      let (summoned, hand) =
+        state.self.Self.hand
+        |> List.partition (fun card -> card.Card.id == id)
+      in
+      let summoned = List.hd summoned in
+      let can_attack = summoned.Card.abilities.Abilities.charge in
+      { state with
+        self =
+          { state.self with
+            mana = state.self.Self.mana - summoned.Card.cost
+          ; hand
+          ; board =
+              {Board_card.card = summoned; can_attack} :: state.self.Self.board
+          }
+      }
     | Action.Pick {position = _}
-    | Action.Summon {id = _}
     | Action.Pass ->
       failwith "next: Unsupported action"
 end
@@ -136,6 +151,19 @@ end
 module Strategy = struct
   let compare_card_costs_decr card_0 card_1 =
     compare card_0.Card.cost card_1.Card.cost
+
+  let summon_action state =
+    let self = state.Simulator.self in
+    let can_be_summoned =
+      self.Self.hand
+      |> List.filter (fun card -> card.Card.cost <= self.Self.mana)
+      |> List.filter (fun card -> card.Card.type_ == Card_type.Creature)
+    in
+    match List.sort compare_card_costs_decr can_be_summoned with
+    | [] ->
+      None
+    | most_expensive :: _ ->
+      Some (Action.Summon {id = most_expensive.Card.id})
 
   let attack_action state =
     let can_attack =
@@ -164,9 +192,20 @@ module Strategy = struct
       [Action.Pass]
     | Round.Battle {self; opponent} ->
       let summoning =
-        self.Self.hand
-        |> List.sort compare_card_costs_decr
-        |> List.map (fun card -> Action.Summon {id = card.Card.id})
+        let rec summon ~state ~actions =
+          match summon_action state with
+          | None ->
+            actions
+          | Some action ->
+            let new_state = Simulator.next ~action state in
+            summon ~state:new_state ~actions:(actions @ [action])
+        in
+        summon
+          ~state:
+            { Simulator.self
+            ; opponent
+            }
+          ~actions:[]
       in
       let attacking =
         let rec attack ~state ~actions =
