@@ -1,0 +1,42 @@
+(library
+  (name legends)
+  (modules
+    Legends
+  )
+)
+
+(test
+  (name tests)
+  (libraries
+    alcotest
+    legends
+  )
+  (modules
+    Tests
+  )
+)
+
+(rule
+  (targets
+     answer.ml
+  )
+  (deps
+     build_anwser.bash
+  )
+  (action (run ./build_anwser.bash %{dep:legends.ml} %{targets}))
+)
+
+(executable
+  (name answer)
+  (modules
+    Answer
+  )
+)
+
+(alias
+  (name default)
+  (deps
+    legends.a
+    answer.exe
+  )
+)
