@@ -32,13 +32,20 @@ module Card = struct
     }
 end
 
+module Board_card = struct
+  type t =
+    { card : Card.t
+    ; can_attack : bool
+    }
+end
+
 module Self = struct
   type t =
     { health : int
     ; mana : int
     ; deck : int
     ; rune : int
-    ; board : Card.t list
+    ; board : Board_card.t list
     ; hand : Card.t list
     }
 end
@@ -82,7 +89,7 @@ end
 
 module Attack_simulator = struct
   type state =
-    { self_can_attack : Card.t list
+    { self_board : Board_card.t list
     ; opponent_board : Card.t list
     }
 
@@ -90,21 +97,21 @@ module Attack_simulator = struct
     match action with
     | Action.Attack {attacker_id; target_id} ->
       let (attackers, others_can_attack) =
-        state.self_can_attack
-        |> List.partition (fun card -> card.Card.id == attacker_id)
+        state.self_board
+        |> List.partition (fun card -> card.Board_card.card.Card.id == attacker_id)
       in
       let attacker = List.hd attackers in
       if target_id == -1 then
-        {state with self_can_attack = others_can_attack}
+        {state with self_board = {attacker with can_attack = false} :: others_can_attack}
       else
         let (targets, other_opponent_cards) =
           state.opponent_board
           |> List.partition (fun card -> card.Card.id == target_id)
         in
         let target = List.hd targets in
-        let target_defense = target.Card.defense - attacker.Card.attack in
-        { self_can_attack =
-            others_can_attack
+        let target_defense = target.Card.defense - attacker.Board_card.card.Card.attack in
+        { self_board =
+            {attacker with can_attack = false} :: others_can_attack
         ; opponent_board =
             if target_defense > 0 then
               {target with defense = target_defense} :: other_opponent_cards
@@ -122,7 +129,12 @@ module Strategy = struct
     compare card_0.Card.cost card_1.Card.cost
 
   let attack_action state =
-    match state.Attack_simulator.self_can_attack with
+    let can_attack =
+      state.Attack_simulator.self_board
+      |> List.filter (fun card -> card.Board_card.can_attack)
+      |> List.map (fun card -> card.Board_card.card)
+    in
+    match can_attack with
     | [] ->
       None
     | attacker :: _ ->
@@ -158,7 +170,7 @@ module Strategy = struct
         in
         attack
           ~state:
-            { Attack_simulator.self_can_attack = self.Self.board
+            { Attack_simulator.self_board = self.Self.board
             ; opponent_board = opponent.Opponent.board
             }
           ~actions:[]
@@ -261,6 +273,7 @@ module Raw = struct
         cards
         |> List.filter (fun card -> card.Card.location == 1)
         |> List.map Card.parse_card
+        |> List.map (fun card -> {Board_card.card; can_attack = true})
       in
       let self_hand =
         cards

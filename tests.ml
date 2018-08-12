@@ -44,13 +44,27 @@ module Fixtures = struct
       ; draw
       }
   end
+
+  module Board_card = struct
+    let factory
+        ?(card=Card.factory ())
+        ?(can_attack=false)
+        ()
+      =
+      { Legends.Board_card.card
+      ; can_attack
+      }
+  end
 end
 
 module Attack_simulator = struct
   let test_next_no_guard () =
     let state =
-      { Legends.Attack_simulator.self_can_attack =
-          [ Fixtures.Card.factory ~id:10 ()
+      { Legends.Attack_simulator.self_board =
+          [ Fixtures.Board_card.factory
+              ~card:(Fixtures.Card.factory ~id:10 ())
+              ~can_attack:true
+              ()
           ]
       ; opponent_board =
           [ Fixtures.Card.factory ~id:20 ~abilities:(Fixtures.Abilities.factory ~guard:false ()) ()
