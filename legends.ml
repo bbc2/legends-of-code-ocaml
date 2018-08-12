@@ -191,39 +191,26 @@ module Strategy = struct
     | Round.Draft _ ->
       [Action.Pass]
     | Round.Battle {self; opponent} ->
-      let summoning =
-        let rec summon ~state ~actions =
-          match summon_action state with
-          | None ->
-            actions
-          | Some action ->
-            let new_state = Simulator.next ~action state in
-            summon ~state:new_state ~actions:(actions @ [action])
-        in
-        summon
-          ~state:
-            { Simulator.self
-            ; opponent
-            }
-          ~actions:[]
+      let rec act ~state ~actions =
+        match summon_action state with
+        | None ->
+          ( match attack_action state with
+            | None ->
+              actions
+            | Some action ->
+              let new_state = Simulator.next ~action state in
+              act ~state:new_state ~actions:(actions @ [action])
+          )
+        | Some action ->
+          let new_state = Simulator.next ~action state in
+          act ~state:new_state ~actions:(actions @ [action])
       in
-      let attacking =
-        let rec attack ~state ~actions =
-          match attack_action state with
-          | None ->
-            actions
-          | Some action ->
-            let new_state = Simulator.next ~action state in
-            attack ~state:new_state ~actions:(actions @ [action])
-        in
-        attack
-          ~state:
-            { Simulator.self
-            ; opponent
-            }
-          ~actions:[]
-      in
-      summoning @ attacking
+      act
+        ~state:
+          { Simulator.self
+          ; opponent
+          }
+        ~actions:[]
 end
 
 module Raw = struct
@@ -364,9 +351,13 @@ module Raw = struct
       "PASS"
 
   let dump_actions actions =
-    actions
-    |> List.map action_to_string
-    |> String.concat ";"
+    match actions with
+    | [] ->
+      "PASS"
+    | _ ->
+      actions
+      |> List.map action_to_string
+      |> String.concat ";"
 end
 
 let rec loop count =
