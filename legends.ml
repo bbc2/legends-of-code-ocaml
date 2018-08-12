@@ -149,18 +149,39 @@ module Simulator = struct
 end
 
 module Strategy = struct
+  let int_flag ability =
+    if ability then
+      1
+    else
+      0
+
+  let rate_card card =
+    let open Card in
+    let type_score =
+      match card.type_ with
+      | Card_type.Creature -> 1
+      | Card_type.Item_blue -> 0
+      | Card_type.Item_red -> 0
+      | Card_type.Item_green -> 0
+    in
+    let value_score =
+      10 * card.attack
+      + 10 * card.defense
+      + 0 * int_flag card.abilities.Abilities.breakthrough
+      + (10 * card.attack) * (int_flag card.abilities.Abilities.charge)
+      + 0 * (int_flag card.abilities.Abilities.drain)
+      + 40 * (int_flag card.abilities.Abilities.guard)
+      + 20 * (int_flag card.abilities.Abilities.lethal)
+      + 30 * (int_flag card.abilities.Abilities.ward)
+      - 20 * card.cost
+    in
+    (type_score, value_score)
+
   let compare_card_costs_decr card_0 card_1 =
     compare card_0.Card.cost card_1.Card.cost
 
-  let compare_card_types_creatures_first card_0 card_1 =
-    let priority =
-      function
-      | Card_type.Creature -> 0
-      | Card_type.Item_blue -> 1
-      | Card_type.Item_red -> 1
-      | Card_type.Item_green -> 1
-    in
-    compare (priority card_0.Card.type_) (priority card_1.Card.type_)
+  let compare_card_best_first card_0 card_1 =
+    - (compare (rate_card card_0) (rate_card card_1))
 
   let summon_action state =
     let self = state.Simulator.self in
@@ -203,7 +224,7 @@ module Strategy = struct
         cards
         |> List.mapi (fun index card -> (index, card))
         |> List.sort
-          (fun (_, card_0) (_, card_1) -> compare_card_types_creatures_first card_0 card_1)
+          (fun (_, card_0) (_, card_1) -> compare_card_best_first card_0 card_1)
         |> List.map fst
         |> List.hd
       in

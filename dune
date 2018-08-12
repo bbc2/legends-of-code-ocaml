@@ -27,6 +27,22 @@
 )
 
 (executable
+  (name sort_cards)
+  (modules sort_cards)
+  (libraries
+    legends
+  )
+  (preprocess
+    (pps
+      ppx_blob
+    )
+  )
+  (preprocessor_deps
+     (file cards.txt)
+  )
+)
+
+(executable
   (name answer)
   (modules
     Answer
@@ -37,6 +53,7 @@
   (name default)
   (deps
     legends.a
+    sort_cards.exe
     answer.exe
   )
 )
