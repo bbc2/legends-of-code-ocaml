@@ -83,7 +83,7 @@ end
 module Attack_simulator = struct
   type state =
     { self_can_attack : Card.t list
-    ; opponent_guards : Card.t list
+    ; opponent_board : Card.t list
     }
 
   let next ~action state =
@@ -97,19 +97,19 @@ module Attack_simulator = struct
       if target_id == -1 then
         {state with self_can_attack = others_can_attack}
       else
-        let (targets, other_guards) =
-          state.opponent_guards
+        let (targets, other_opponent_cards) =
+          state.opponent_board
           |> List.partition (fun card -> card.Card.id == target_id)
         in
         let target = List.hd targets in
         let target_defense = target.Card.defense - attacker.Card.attack in
         { self_can_attack =
             others_can_attack
-        ; opponent_guards =
+        ; opponent_board =
             if target_defense > 0 then
-              {target with defense = target_defense} :: other_guards
+              {target with defense = target_defense} :: other_opponent_cards
             else
-              other_guards
+              other_opponent_cards
         }
     | Action.Pick {position = _}
     | Action.Summon {id = _}
@@ -126,16 +126,16 @@ module Strategy = struct
     | [] ->
       None
     | attacker :: _ ->
-      ( match state.Attack_simulator.opponent_guards with
+      ( let guards =
+          state.Attack_simulator.opponent_board
+          |> List.filter (fun card -> card.Card.abilities.Abilities.guard)
+        in
+        match guards with
         | [] ->
           Some (Action.Attack {attacker_id = attacker.Card.id; target_id = -1})
         | guard :: _ ->
           Some (Action.Attack {attacker_id = attacker.Card.id; target_id = guard.Card.id})
       )
-
-  let guards opponent =
-    opponent.Opponent.board
-    |> List.filter (fun card -> card.Card.abilities.Abilities.guard)
 
   let actions round =
     match round with
@@ -159,7 +159,7 @@ module Strategy = struct
         attack
           ~state:
             { Attack_simulator.self_can_attack = self.Self.board
-            ; opponent_guards = guards opponent
+            ; opponent_board = opponent.Opponent.board
             }
           ~actions:[]
       in

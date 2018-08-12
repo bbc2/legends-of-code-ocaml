@@ -52,7 +52,7 @@ module Attack_simulator = struct
       { Legends.Attack_simulator.self_can_attack =
           [ Fixtures.Card.factory ~id:10 ()
           ]
-      ; opponent_guards =
+      ; opponent_board =
           [ Fixtures.Card.factory ~id:20 ~abilities:(Fixtures.Abilities.factory ~guard:false ()) ()
           ]
       }
